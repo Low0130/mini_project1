@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- State when the item is "activated" (our highlight) -->
+    <item android:state_activated="true">
+        <color android:color="#FFD700" /> <!-- A gold highlight color -->
+    </item>
+    <!-- Default state -->
+    <item>
+        <color android:color="@android:color/transparent" />
+    </item>
+</selector>

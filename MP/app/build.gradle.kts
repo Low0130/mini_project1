@@ -6,6 +6,13 @@ plugins {
 android {
     namespace = "com.example.mp"
     compileSdk = 36
+    flavorDimensions += "pyVersion"
+    productFlavors {
+        create("py38") { dimension = "pyVersion" }
+        create("py39") { dimension = "pyVersion" }
+        create("py310") { dimension = "pyVersion" }
+        create("py311") { dimension = "pyVersion" }
+    }
 
     defaultConfig {
         applicationId = "com.example.mp"
@@ -15,7 +22,7 @@ android {
         versionName = "1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         ndk {
-            abiFilters.addAll(listOf("arm64-v8a", "x86_64"))
+            abiFilters += listOf("arm64-v8a", "x86_64")
         }
     }
 
@@ -34,16 +41,27 @@ android {
     }
 }
 
-// THIS IS THE FINAL, SIMPLE, AND CORRECT SYNTAX
-chaquopy {
-    defaultConfig {
-        version = "3.10"
+// THIS IS THE CORRECT, ROBUST SYNTAX FOR MODERN KOTLIN DSL
+chaquopy{
+
+    productFlavors {
+        getByName("py38") { version = "3.8" }
+        getByName("py39") { version = "3.9" }
+        getByName("py310") { version = "3.10" }
+        getByName("py311") { version = "3.11" }
+    }
+    defaultConfig{
         pip {
             install("numpy")
-            install("opencv-python @ https://chaquo.com/pypi-13.1/opencv-python/opencv_python-4.6.0.66-5-cp310-cp310-android_21_arm64_v8a.whl")
-            install("src/main/python/libs/pyzbar-0.1.9-py2.py3-none-any.whl")
+
+            install("opencv-python")
+
+            install("pyzbar")
+
+            install("matplotlib")
         }
     }
+
 }
 
 dependencies {
