@@ -12,7 +12,7 @@ import android.hardware.SensorManager;
 import android.os.Bundle;
 import android.os.Vibrator;
 import android.util.Log;
-import android.view.View; // ADDED: Import for View.GONE
+import android.view.View;
 import android.view.animation.RotateAnimation;
 import android.widget.ImageView;
 import android.widget.TextView;
@@ -62,8 +62,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private final float[] geomagnetic = new float[3];
     private float targetAzimuth = 0.0f;
     private float targetDistance = 0.0f;
-
-    // ADDED: The new state variable to control the guidance system.
     private boolean hasArrived = false;
 
     @Override
@@ -136,7 +134,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private void processImageProxy(ImageProxy imageProxy) {
         try {
             if (navigationProcessor == null || python == null) return;
-            // ADDED: Stop processing frames once the user has arrived.
             if (hasArrived) {
                 imageProxy.close();
                 return;
@@ -183,7 +180,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                     handleNavigating(resultMap);
                     break;
                 case "ARRIVED":
-                    // MODIFIED: Handle the arrival state.
                     updateStatus("You have arrived at your destination!", true);
                     this.hasArrived = true; // Set the flag to stop guidance
                     // Hide UI elements that are no longer needed
@@ -351,7 +347,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             float deviceAzimuth = (float) Math.toDegrees(orientation[0]);
             deviceAzimuth = (deviceAzimuth + 360) % 360;
 
-            // MODIFIED: This is the core fix. Only give guidance if a path is planned AND we have not arrived.
             if (isPathPlanned && !hasArrived) {
                 float angleToTarget = (targetAzimuth - deviceAzimuth + 360) % 360;
                 rotateArrow(angleToTarget);

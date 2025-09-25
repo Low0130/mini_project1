@@ -42,7 +42,6 @@ public class TTSService {
         });
     }
 
-    // MODIFIED: This is now the main public method.
     public void speak(String text, int queueMode) {
         if (!isInitialized || tts == null) {
             Log.e(TAG, "TTS not initialized, cannot speak.");
@@ -51,7 +50,6 @@ public class TTSService {
         tts.speak(text, queueMode, null, null);
     }
 
-    // ADDED: A convenience method that uses the default FLUSH behavior.
     public void speak(String text) {
         speak(text, TextToSpeech.QUEUE_FLUSH);
     }

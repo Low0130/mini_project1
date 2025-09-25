@@ -56,7 +56,6 @@ public class DestinationSelectActivity extends AppCompatActivity {
         initPython();
         loadDestinations();
 
-        // MODIFIED: We now explicitly tell the first message to FLUSH the queue.
         TTSService.getInstance().speak("Select a destination by swiping up or down. Tap to confirm.", TextToSpeech.QUEUE_FLUSH);
     }
 
@@ -108,7 +107,6 @@ public class DestinationSelectActivity extends AppCompatActivity {
         recyclerView.setAdapter(adapter);
 
         if (!destinations.isEmpty()) {
-            // MODIFIED: We now call a special version of announceSelection for the initial announcement.
             recyclerView.postDelayed(() -> announceInitialSelection(adapter.getSelectedPosition()), 500); // Increased delay slightly
         } else {
             Log.e(TAG, "Destination list is empty after processing. Nothing to show.");
@@ -174,7 +172,6 @@ public class DestinationSelectActivity extends AppCompatActivity {
                 if (newPosition != currentPosition) {
                     adapter.setSelectedPosition(newPosition);
                     recyclerView.smoothScrollToPosition(newPosition);
-                    // MODIFIED: Call the swipe-specific announcement method.
                     announceSwipeSelection(newPosition);
                 }
                 return true;
