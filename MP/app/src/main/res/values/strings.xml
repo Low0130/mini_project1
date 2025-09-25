@@ -1,3 +1,14 @@
 <resources>
     <string name="app_name">MP</string>
+
+    <!-- Add all these new strings -->
+    <string name="status_initializing">Initializing…</string>
+    <string name="status_scanning">Scanning for QR Code…</string>
+    <string name="status_detected">QR Code Detected! Reading…</string>
+    <string name="status_location_found">Location Found: %s</string>
+    <string name="status_navigating_to">Navigating to: %s</string>
+    <string name="status_arrived">Destination Reached!</string>
+    <string name="status_off_track">Off Track! Please find the next QR code.</string>
+    <string name="status_error">Error: %s</string>
+
 </resources>

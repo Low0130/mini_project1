@@ -9,9 +9,7 @@ android {
     flavorDimensions += "pyVersion"
     productFlavors {
         create("py38") { dimension = "pyVersion" }
-        create("py39") { dimension = "pyVersion" }
-        create("py310") { dimension = "pyVersion" }
-        create("py311") { dimension = "pyVersion" }
+
     }
 
     defaultConfig {
@@ -46,9 +44,7 @@ chaquopy{
 
     productFlavors {
         getByName("py38") { version = "3.8" }
-        getByName("py39") { version = "3.9" }
-        getByName("py310") { version = "3.10" }
-        getByName("py311") { version = "3.11" }
+
     }
     defaultConfig{
         pip {

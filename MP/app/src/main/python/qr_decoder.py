@@ -17,6 +17,7 @@ import json
 from typing import Tuple, Optional, List, Dict, Any
 from dataclasses import dataclass, asdict
 from map_building import BuildingMap
+import traceback  # <--- THIS IS THE FIX
 
 @dataclass
 class QRTarget:
@@ -40,16 +41,16 @@ class LocationInfo:
     Stores details about a location, including ID, name, coordinates, and QR orientation.
     Supports dynamic direction updates for navigation.
     """
-    location_id: str                    # Unique identifier (e.g., "N_G_LAB_101")
-    location_name: str                  # Human-readable name (e.g., "Computer Lab 101")
-    floor: str                         # Floor designation (e.g., "Ground")
-    building: str                      # Building name (e.g., "Block N")
-    coordinates: Tuple[float, float]   # (x, y) position on floor map
-    available_directions: Dict[str, float]  # direction_name: angle_in_degrees (e.g., {"north": 0.0})
-    connections: List[str]             # Connected location IDs (e.g., ["N_G_CORRIDOR_A"])
-    qr_orientation: float              # QR code mounting angle (degrees, 0 = north-facing)
-    description: str                   # Detailed description of location
-    accessibility_info: str            # Accessibility details (e.g., "Wheelchair accessible")
+    location_id: str
+    location_name: str
+    floor: str
+    building: str
+    coordinates: Tuple[float, float]
+    available_directions: Dict[str, float]
+    connections: List[str]
+    qr_orientation: float
+    description: str
+    accessibility_info: str
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert LocationInfo to dictionary for JSON serialization."""
@@ -58,79 +59,58 @@ class LocationInfo:
     def update_directions(self, directions: Dict[str, float]):
         """
         Update available directions dynamically from route_guidance.py.
-        
-        Args:
-            directions: Dictionary of direction names and angles (e.g., {"north": 0.0, "east": 90.0}).
         """
         self.available_directions.update(directions)
 
 class QRDecoder:
     """
     QR Code Reader and Direction Processor
-    
-    Responsibilities:
-    1. Decode QR code content in format location_id|qr_orientation|color.
-    2. Map decoded data to location information using BuildingMap from map_building.py.
-    3. Support multiple QR code formats (direct ID, JSON, name, custom) for flexibility.
-    4. Provide location data to route_guidance.py for navigation path planning.
-    5. Handle QR code reading errors and ensure reliable decoding for visually impaired users.
     """
     
     def __init__(self):
         """
         Initialize QR decoder with location database from BuildingMap.
-        Sets up parameters for QR code reading and initializes Block N database.
         """
-        self.current_location: Optional[LocationInfo] = None  # Current decoded location
-        self.last_scanned_qr: Optional[str] = None           # Last QR code data to prevent duplicates
-        self.location_database: Dict[str, LocationInfo] = {} # Database of location information
-        self.min_qr_size = 50          # Minimum QR size (pixels) for reliable reading
-        self.max_read_attempts = 5     # Maximum preprocessing attempts for decoding
-        self.confidence_threshold = 0.8 # Confidence threshold for valid QR reads
-        self.building_map = BuildingMap()  # Load map data from map_building.py
-        self._initialize_block_n_database()  # Populate location database
+        self.current_location: Optional[LocationInfo] = None
+        self.last_scanned_qr: Optional[str] = None
+        self.location_database: Dict[str, LocationInfo] = {}
+        self.min_qr_size = 50
+        self.max_read_attempts = 5
+        self.confidence_threshold = 0.8
+        self.building_map = BuildingMap()
+        self._initialize_block_n_database()
 
     def _initialize_block_n_database(self):
         """
         Initialize location database using BuildingMap data.
-        Creates LocationInfo objects for each location in Block N (ground floor, top rooms, special areas).
-        Directions and connections are left empty for route_guidance.py to populate.
         """
         all_locations = self.building_map.bottom_rooms + self.building_map.top_rooms + self.building_map.special_areas
+        print(f"Python QRDecoder: Found {len(all_locations)} total locations in map_building.py.")
         for loc in all_locations:
             loc_id = loc['location_id']
-            self.location_database[loc_id] = LocationInfo(
-                location_id=loc_id,
-                location_name=loc['name'],
-                floor="Ground",  # Assume ground floor; update if map specifies floors
-                building="Block N",
-                coordinates=self.building_map.nodes[loc_id],
-                available_directions={},  # Populated dynamically by route_guidance.py
-                connections=[],          # Populated by route_guidance.py
-                qr_orientation=loc.get('qr_orientation', 0.0),  # Default to 0 if not specified
-                description=f"{loc['name']} in Block N",
-                accessibility_info=loc.get('accessibility_info', "Accessible")
-            )
+            if loc_id in self.building_map.nodes:
+                self.location_database[loc_id] = LocationInfo(
+                    location_id=loc_id,
+                    location_name=loc['name'],
+                    floor="Ground",
+                    building="Block N",
+                    coordinates=self.building_map.nodes[loc_id],
+                    available_directions={},
+                    connections=[],
+                    qr_orientation=loc.get('qr_orientation', 0.0),
+                    description=f"{loc['name']} in Block N",
+                    accessibility_info=loc.get('accessibility_info', "Accessible")
+                )
+            else:
+                print(f"Python QRDecoder WARNING: Location '{loc_id}' found in room list but NOT in nodes dictionary. It will be ignored.")
+        print(f"Python QRDecoder: Database initialized with {len(self.location_database)} valid locations.")
 
     def decode_qr_content(self, qr_data: str) -> Optional[LocationInfo]:
         """
         Decode QR code content and return corresponding LocationInfo.
-        Supports multiple formats for flexibility:
-        - Direct location ID (e.g., "N_G_LAB_101|0.0|red")
-        - JSON (e.g., '{"location_id": "N_G_LAB_101"}')
-        - Location name (e.g., "Computer Lab 101")
-        - Custom format (e.g., "BlockN:Ground:101")
-        - Partial name/ID match
-        
-        Args:
-            qr_data: Raw QR code data string
-            
-        Returns:
-            LocationInfo object if successfully decoded, None otherwise
         """
         try:
             qr_data = qr_data.strip()
-            # Try JSON first
             if qr_data.startswith('{') and qr_data.endswith('}'):
                 try:
                     data = json.loads(qr_data)
@@ -139,23 +119,19 @@ class QRDecoder:
                         return self.location_database[location_id]
                 except json.JSONDecodeError:
                     pass
-            # Direct location ID match (supports qr_generator.py format: location_id|qr_orientation|color)
             if '|' in qr_data:
                 try:
                     location_id, qr_orientation, color = qr_data.split('|')
                     if location_id in self.location_database:
-                        # Update qr_orientation if different
                         loc_info = self.location_database[location_id]
                         loc_info.qr_orientation = float(qr_orientation)
                         return loc_info
                 except ValueError:
                     pass
-            # Case-insensitive name match
             qr_data_lower = qr_data.lower()
             for location in self.location_database.values():
                 if location.location_name.lower() == qr_data_lower:
                     return location
-            # Structured format (e.g., "BlockN:Ground:101")
             if ':' in qr_data:
                 parts = qr_data.split(':')
                 if len(parts) >= 3:
@@ -163,7 +139,6 @@ class QRDecoder:
                     constructed_id = f"{building}_{floor[0].upper()}_{room}"
                     if constructed_id in self.location_database:
                         return self.location_database[constructed_id]
-            # Partial match
             for location in self.location_database.values():
                 if (qr_data_lower in location.location_name.lower() or 
                     qr_data_lower in location.location_id.lower()):
@@ -177,17 +152,8 @@ class QRDecoder:
     def enhance_qr_region(self, frame: np.ndarray, corners: List[Tuple[int, int]]) -> List[np.ndarray]:
         """
         Extract and enhance QR code region for better decoding.
-        Applies multiple image processing techniques to improve readability.
-        
-        Args:
-            frame: Original camera frame
-            corners: QR code corner points from qr_detection.py
-            
-        Returns:
-            List of processed image variants for decoding attempts
         """
         try:
-            # Calculate bounding box with padding
             x_coords = [p[0] for p in corners]
             y_coords = [p[1] for p in corners]
             x_min = max(0, min(x_coords) - 20)
@@ -196,38 +162,28 @@ class QRDecoder:
             y_max = min(frame.shape[0], max(y_coords) + 20)
             qr_region = frame[y_min:y_max, x_min:x_max]
             if qr_region.size == 0:
-                print("Empty QR region")
                 return []
-            # Convert to grayscale
             if len(qr_region.shape) == 3:
                 gray = cv2.cvtColor(qr_region, cv2.COLOR_BGR2GRAY)
             else:
                 gray = qr_region.copy()
             processed_images = []
-            # 1. Original grayscale
             processed_images.append(gray)
-            # 2. Gaussian blur to reduce noise
             blurred = cv2.GaussianBlur(gray, (3, 3), 0)
             processed_images.append(blurred)
-            # 3. Histogram equalization for better contrast
             equalized = cv2.equalizeHist(gray)
             processed_images.append(equalized)
-            # 4. CLAHE (Contrast Limited Adaptive Histogram Equalization)
             clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8))
             clahe_applied = clahe.apply(gray)
             processed_images.append(clahe_applied)
-            # 5. Binary threshold (Otsu's method)
             _, binary_otsu = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
             processed_images.append(binary_otsu)
-            # 6. Adaptive threshold
             adaptive = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, 
                                             cv2.THRESH_BINARY, 11, 2)
             processed_images.append(adaptive)
-            # 7. Morphological operations to clean up
             kernel = np.ones((2, 2), np.uint8)
             cleaned = cv2.morphologyEx(binary_otsu, cv2.MORPH_CLOSE, kernel)
             processed_images.append(cleaned)
-            # 8. Resize for better recognition if too small
             if gray.shape[0] < 100 or gray.shape[1] < 100:
                 scale = 2.0
                 enlarged = cv2.resize(gray, None, fx=scale, fy=scale, interpolation=cv2.INTER_CUBIC)
@@ -239,57 +195,49 @@ class QRDecoder:
 
     def read_qr_code(self, qr_target: QRTarget, frame: np.ndarray) -> Optional[LocationInfo]:
         """
-        Read QR code content from detected target provided by qr_detection.py.
-        Supports format from qr_generator.py: location_id|qr_orientation|color.
-        
-        Args:
-            qr_target: QRTarget object from qr_detection.py
-            frame: Original camera frame
-            
-        Returns:
-            LocationInfo if successfully read and decoded, None otherwise
+        Read QR code content from the detected target. This version has corrected logic.
         """
         try:
-            # Check if QR is large enough for reliable reading
             if qr_target.width < self.min_qr_size or qr_target.height < self.min_qr_size:
-                print(f"QR code too small: {qr_target.width}x{qr_target.height}")
                 return None
-            # Get enhanced QR regions
+
             processed_images = self.enhance_qr_region(frame, qr_target.corners)
             if not processed_images:
                 return None
-            # Try to decode with each processed image
-            for i, processed in enumerate(processed_images):
+
+            for i, processed_image in enumerate(processed_images):
                 try:
-                    decoded_objects = decode(processed, symbols=[ZBarSymbol.QRCODE])
-                    for decoded_obj in decoded_objects:
-                        qr_data = decoded_obj.data.decode('utf-8')
-                        print(f"QR data read (attempt {i+1}): '{qr_data}'")
-                        # Avoid re-processing the same QR code
-                        if qr_data == self.last_scanned_qr:
-                            continue
-                        # Decode QR content
+                    decoded_objects = decode(processed_image, symbols=[ZBarSymbol.QRCODE])
+                    if decoded_objects:
+                        qr_data = decoded_objects[0].data.decode('utf-8')
+                        print(f"QR data successfully read (attempt {i+1}): '{qr_data}'")
+
                         location_info = self.decode_qr_content(qr_data)
+
                         if location_info:
                             self.current_location = location_info
                             self.last_scanned_qr = qr_data
-                            print(f"Successfully decoded location: {location_info.location_name}")
+                            print(f"Successfully matched QR data to location: {location_info.location_name}")
                             return location_info
+                        else:
+                            print(f"QR data '{qr_data}' was read but did not match any location in the database.")
+                            return None
+
                 except Exception as decode_error:
-                    print(f"Decode attempt {i+1} failed: {decode_error}")
+                    print(f"An error occurred during decoding attempt {i+1}: {decode_error}")
                     continue
-            print("Failed to decode QR code after all attempts")
-            return None
-        except Exception as e:
-            print(f"Error reading QR code: {e}")
+
+            print("Failed to read any QR data from the image after all attempts.")
             return None
 
+        except Exception as e:
+            print(f"A critical error occurred in read_qr_code: {e}")
+            traceback.print_exc()
+            return None
+        
     def get_available_directions(self) -> List[str]:
         """
         Get list of available directions from current location.
-        
-        Returns:
-            List of direction names (e.g., ["north", "east"]).
         """
         if not self.current_location:
             return []
@@ -298,9 +246,6 @@ class QRDecoder:
     def get_location_info_text(self) -> str:
         """
         Get formatted location information text for UI display or audio feedback.
-        
-        Returns:
-            String with location details, including name, building, floor, and directions.
         """
         if not self.current_location:
             return "No location information available. Please scan a QR code."
@@ -319,7 +264,6 @@ class QRDecoder:
 if __name__ == "__main__":
     """
     Main execution for testing the QR decoder.
-    Initializes decoder and prints location information.
     """
     decoder = QRDecoder()
     print(decoder.get_location_info_text())

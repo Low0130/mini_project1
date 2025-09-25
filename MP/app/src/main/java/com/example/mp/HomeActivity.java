@@ -21,7 +21,7 @@ public class HomeActivity extends AppCompatActivity {
         // Speak the welcome message after a short delay to ensure TTS is ready
         homeLayout.postDelayed(() -> {
             TTSService.getInstance().speak("Welcome to Block N Navigator. Tap anywhere to select a destination.");
-        }, 500); // 500ms delay
+        }, 1000); // 1000ms delay
 
         homeLayout.setOnClickListener(v -> {
             Intent intent = new Intent(HomeActivity.this, DestinationSelectActivity.class);

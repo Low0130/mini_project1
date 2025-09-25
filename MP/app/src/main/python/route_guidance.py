@@ -348,6 +348,20 @@ class RouteGuidance:
                 return "You have reached your destination!"
         except ValueError:
             return "Current location not found in path"
+        
+    def _calculate_bearing(self, pos1: Tuple[float, float], pos2: Tuple[float, float]) -> float:
+        """
+        Helper to calculate the bearing (azimuth) from pos1 to pos2.
+        Azimuth is degrees from North (Y-axis), clockwise.
+        """
+        x1, y1 = pos1
+        x2, y2 = pos2
+        # atan2 takes (y, x), so we use (x2 - x1, y2 - y1) to get angle from the Y-axis (North)
+        angle = math.degrees(math.atan2(x2 - x1, y2 - y1))
+        # Normalize to 0-360 degrees
+        if angle < 0:
+            angle += 360
+        return angle
 
 if __name__ == "__main__":
     guidance = RouteGuidance()
